@@ -4,8 +4,9 @@
    =========================================================================== */
 
 // ── State ─────────────────────────────────────────────────────────────────
-const S = { config: null, dirty: new Map(), view: 'dashboard' };
-const M = '•'.repeat(8); // masked
+const S = { config: null, dirty: new Map(), origValues: new Map(), view: 'dashboard' };
+const MASKED = '********';
+const M = '•'.repeat(8); // fallback masked display
 
 // ── DOM ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -32,10 +33,10 @@ async function api(path, opts = {}) {
 
 // ── Views ─────────────────────────────────────────────────────────────────
 const VIEWS = [
-  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: '#dashboard-icon' },
-  { id: 'providers', label: 'Providers', title: 'Provider Configuration', icon: '#providers-icon' },
-  { id: 'models',    label: 'Models',    title: 'Model Routing', icon: '#models-icon' },
-  { id: 'settings',  label: 'Settings',  title: 'Settings', icon: '#settings-icon' },
+  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard' },
+  { id: 'providers', label: 'Providers', title: 'Provider Configuration' },
+  { id: 'models',    label: 'Models',    title: 'Model Routing' },
+  { id: 'settings',  label: 'Settings',  title: 'Settings' },
 ];
 
 function renderNav() {
@@ -61,7 +62,7 @@ function switchView(id) {
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
-function renderDashboard(sections, provStatus) {
+function renderDashboard(fields, provStatus) {
   const pane = document.createElement('div');
   pane.id = 'pane-dashboard';
   pane.className = 'view-pane active';
@@ -108,7 +109,6 @@ function renderDashboard(sections, provStatus) {
 
   $('viewContainer').appendChild(pane);
 
-  // Render mini provider grid
   const pg = $('dashProvGrid');
   pg.innerHTML = Object.entries(provStatus||{}).map(([id, p]) => {
     const keysHtml = (p.keys||[]).map(k =>
@@ -123,7 +123,6 @@ function renderDashboard(sections, provStatus) {
       </div>`;
   }).join('');
 
-  // Uptime
   let sec = 0;
   setInterval(() => {
     sec++;
@@ -133,7 +132,7 @@ function renderDashboard(sections, provStatus) {
 }
 
 // ── Providers Pane ────────────────────────────────────────────────────────
-function renderProviders(provStatus) {
+function renderProviders(fields, provStatus) {
   const pane = document.createElement('div');
   pane.id = 'pane-providers';
   pane.className = 'view-pane';
@@ -163,109 +162,125 @@ function renderProviders(provStatus) {
 }
 
 // ── Models Pane ───────────────────────────────────────────────────────────
-function renderModels(sections) {
+function renderModels(fields) {
   const pane = document.createElement('div');
   pane.id = 'pane-models';
   pane.className = 'view-pane';
 
-  const modelSection = sections?.models || { fields: [] };
-  const thinkingSection = sections?.thinking || { fields: [] };
+  const modelFields = fields.filter(f => f.section === 'models');
+  const thinkFields = fields.filter(f => f.section === 'thinking');
 
   pane.innerHTML = `
     <div class="section">
       <div class="section-head"><h2>Model Routing</h2><span class="section-tag">Tiers</span></div>
-      <div class="cfg-grid">${(modelSection.fields||[]).map(f => buildField(f)).join('')}</div>
+      <div class="cfg-grid">${modelFields.map(f => buildField(f)).join('')}</div>
     </div>
     <div class="section">
       <div class="section-head"><h2>Extended Thinking</h2><span class="section-tag">Per-model</span></div>
-      <div class="cfg-grid">${(thinkingSection.fields||[]).map(f => buildField(f)).join('')}</div>
+      <div class="cfg-grid">${thinkFields.map(f => buildField(f)).join('')}</div>
     </div>
   `;
   $('viewContainer').appendChild(pane);
-  bindFields();
+  restoreOrigValues();
 }
 
 // ── Settings Pane ─────────────────────────────────────────────────────────
-function renderSettings(sections) {
+function renderSettings(fields, sections) {
   const pane = document.createElement('div');
   pane.id = 'pane-settings';
   pane.className = 'view-pane';
 
-  const order = ['general', 'api', 'providers', 'rate_limiting', 'advanced'];
+  const viewOrder = ['general', 'api', 'providers', 'rate_limiting', 'advanced'];
   let html = '';
-  for (const key of order) {
-    const sec = sections?.[key];
+  for (const sid of viewOrder) {
+    const sec = (sections||[]).find(s => s.id === sid);
     if (!sec) continue;
-    const regular = sec.fields.filter(f => !f.advanced);
-    const advanced = sec.fields.filter(f => f.advanced);
+    const secFields = fields.filter(f => f.section === sid);
+    const regular = secFields.filter(f => !f.advanced);
+    const advanced = secFields.filter(f => f.advanced);
+    if (!regular.length && !advanced.length) continue;
+
     html += `<div class="cfg-section">
       <div class="cfg-section-title">${sec.label}</div>
-      <div class="cfg-grid">${regular.map(f => buildField(f)).join('')}</div>
-      ${advanced.length ? `
+      <div class="cfg-grid">${regular.map(f => buildField(f)).join('')}</div>`;
+    if (advanced.length) {
+      html += `
         <button class="adv-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
           <span class="chev">▸</span> Advanced (${advanced.length})
         </button>
-        <div class="adv-fields">${advanced.map(f => buildField(f)).join('')}</div>
-      ` : ''}
-    </div>`;
+        <div class="adv-fields">${advanced.map(f => buildField(f)).join('')}</div>`;
+    }
+    html += `</div>`;
   }
   pane.innerHTML = html;
   $('viewContainer').appendChild(pane);
-  bindFields();
+  restoreOrigValues();
 }
 
 // ── Field Builder ─────────────────────────────────────────────────────────
+const MASKED_PLACEHOLDER = 'Configured — enter new value to replace';
+
 function buildField(f) {
   const id = `f-${f.key}`;
   const val = f.value ?? '';
-  const display = f.secret && val ? M : val;
+  const display = (f.secret && val) ? '' : val;
+  const placeholder = (f.secret && val) ? MASKED_PLACEHOLDER : (f.placeholder || '');
   const desc = f.description ? `<div class="cfg-desc">${f.description}</div>` : '';
-  const info = f.description ? `<span class="info-icon" title="${f.description.replace(/"/g,'&quot;')}">?</span>` : '';
+  const locked = f.locked ? 'disabled' : '';
+  const lockIcon = f.locked ? '<span class="lock-icon" title="Set via environment">🔒</span>' : '';
 
   let input = '';
   switch (f.type) {
     case 'boolean':
-      input = `<input type="checkbox" id="${id}" data-key="${f.key}" ${(val===true||val==='true')?'checked':''} onchange="mark('${f.key}',this)">`;
+      input = `<input type="checkbox" id="${id}" data-key="${f.key}" data-original="${val}" ${(val==='true'||val===true)?'checked':''} onchange="mark('${f.key}',this)" ${locked}>`;
       break;
     case 'select':
-    case 'options':
       const opts = ['', ...(f.options||[])].map(o =>
         `<option value="${o}" ${o===val?'selected':''}>${o||'— Select —'}</option>`
       ).join('');
-      input = `<select id="${id}" data-key="${f.key}" onchange="mark('${f.key}',this)">${opts}</select>`;
-      break;
-    case 'textarea':
-      input = `<textarea id="${id}" data-key="${f.key}" onchange="mark('${f.key}',this)">${display}</textarea>`;
+      input = `<select id="${id}" data-key="${f.key}" data-original="${val}" onchange="mark('${f.key}',this)" ${locked}>${opts}</select>`;
       break;
     case 'number':
-      input = `<input type="number" id="${id}" data-key="${f.key}" value="${display}" onchange="mark('${f.key}',this)">`;
+      input = `<input type="number" id="${id}" data-key="${f.key}" data-original="${val}" value="${display}" onchange="mark('${f.key}',this)" ${locked}>`;
       break;
     default:
-      input = `<input type="${f.secret?'password':'text'}" id="${id}" data-key="${f.key}" value="${display}" onchange="mark('${f.key}',this)" ${f.secret&&val?'data-masked':''}>`;
+      input = `<input type="${f.secret?'password':'text'}" id="${id}" data-key="${f.key}" data-original="${val}" value="${display}" placeholder="${placeholder}" onchange="mark('${f.key}',this)" ${locked}>`;
   }
-  return `<div class="cfg-field" data-key="${f.key}"><label class="cfg-label" for="${id}">${f.label}${info}</label>${input}${desc}</div>`;
+  return `<div class="cfg-field" data-key="${f.key}"><label class="cfg-label" for="${id}">${f.label}${lockIcon}</label>${input}${desc}</div>`;
 }
 
-function bindFields() {
-  $$('.cfg-field input, .cfg-field select, .cfg-field textarea').forEach(el => {
+function restoreOrigValues() {
+  $$('.cfg-field input, .cfg-field select').forEach(el => {
     const key = el.dataset.key;
-    if (key) {
-      // restore dirty state if previously marked
+    if (key && S.origValues.has(key)) {
+      const orig = S.origValues.get(key);
+      el.dataset.original = orig;
     }
   });
 }
 
 // ── Dirty Tracking ────────────────────────────────────────────────────────
-function getVal(el) {
-  if (el.type === 'checkbox') return el.checked;
-  if (el.dataset.masked && el.value === M) return null;
-  return el.value;
+function getChangedValue(el) {
+  if (el.type === 'checkbox') {
+    const orig = el.dataset.original === 'true';
+    return el.checked !== orig ? String(el.checked) : null;
+  }
+  const orig = el.dataset.original;
+  const current = el.value;
+  // Secret field that hasn't been changed — still shows masked placeholder
+  if (el.type === 'password' && (!current || current === '') && orig && orig.length > 0) {
+    return null; // unchanged secret, send nothing
+  }
+  if (current === orig) return null;
+  return current || '';
 }
+
 function mark(key, el) {
-  const v = getVal(el);
+  const v = getChangedValue(el);
   if (v === null) S.dirty.delete(key); else S.dirty.set(key, v);
   updateDirty();
 }
+
 function updateDirty() {
   const n = S.dirty.size;
   const di = $('dirtyIndicator');
@@ -305,12 +320,23 @@ async function applyConfig() {
   btn.disabled = true;
   try {
     const changes = Object.fromEntries(S.dirty);
-    await api('/admin/api/config/apply', { method: 'POST', body: JSON.stringify(changes) });
+    const result = await api('/admin/api/config/apply', { method: 'POST', body: JSON.stringify(changes) });
     msg.className = 'footbar-center ok';
     msg.textContent = '✓ Saved';
     S.dirty.clear();
     updateDirty();
-    toast('Applied — restart may be needed', 'success');
+    // Update stored original values from what we just applied
+    for (const [key, val] of Object.entries(changes)) {
+      S.origValues.set(key, val);
+    }
+    // Update data-original on fields to match applied state
+    $$('.cfg-field input, .cfg-field select').forEach(el => {
+      if (el.dataset.key && changes[el.dataset.key] !== undefined) {
+        el.dataset.original = changes[el.dataset.key];
+      }
+    });
+    const restart = result.restart_required;
+    toast(restart ? 'Applied — restart may be needed' : 'Applied and active', 'success');
   } catch (e) {
     msg.className = 'footbar-center err';
     msg.textContent = `✗ ${e.message}`;
@@ -325,16 +351,20 @@ async function load() {
     const data = await api('/admin/api/config');
     S.config = data;
 
+    const fields = data.fields || [];
+    const sections = data.sections || [];
+    const provStatus = data.provider_status || {};
+
+    // Store original values
+    fields.forEach(f => S.origValues.set(f.key, f.value || ''));
+
     renderNav();
     $('viewContainer').innerHTML = '';
 
-    const sections = data.sections || {};
-    const provStatus = data.provider_status || {};
-
-    renderDashboard(sections, provStatus);
-    renderProviders(provStatus);
-    renderModels(sections);
-    renderSettings(sections);
+    renderDashboard(fields, provStatus);
+    renderProviders(fields, provStatus);
+    renderModels(fields);
+    renderSettings(fields, sections);
 
     updateDirty();
     toast('Console ready', 'info');
