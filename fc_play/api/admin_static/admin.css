@@ -245,6 +245,26 @@ body::before {
   border: 1px solid var(--border);
 }
 
+/* ── Key Chips ──────────────────────────────────────────────────────────── */
+.key-chip {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px; border-radius: var(--radius-pill);
+  font-size: .58rem; font-weight: 700; font-family: var(--mono);
+  border: 1px solid var(--border-dim);
+}
+.key-chip.on {
+  background: var(--green-dim); color: var(--green);
+  border-color: rgba(34,197,94,.25);
+}
+.key-chip.off {
+  background: var(--red-dim); color: var(--red);
+  border-color: rgba(239,68,68,.2);
+}
+.key-chip.warn {
+  background: var(--yellow-dim); color: var(--yellow);
+  border-color: rgba(234,179,8,.2);
+}
+
 /* ── Config Sections ─────────────────────────────────────────────────────── */
 .cfg-section { margin-bottom: 16px; }
 .cfg-section-title {

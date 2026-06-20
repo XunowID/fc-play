@@ -102,15 +102,18 @@ function renderDashboard(sections, provStatus) {
 
   // Render mini provider grid
   const pg = $('dashProvGrid');
-  pg.innerHTML = Object.entries(provStatus||{}).map(([id, p]) =>
-    `<div class="prov-card">
-      <div class="prov-card-top">
-        <span class="prov-name">${p.label||id}</span>
-        <span class="badge ${p.status}"></span>
-      </div>
-      <div class="prov-meta">${p.status === 'on' ? 'Connected' : 'No key'}</div>
-    </div>`
-  ).join('');
+  pg.innerHTML = Object.entries(provStatus||{}).map(([id, p]) => {
+    const keysHtml = (p.keys||[]).map(k =>
+      `<span class="key-chip ${k.has_value?'on':'off'}" title="Key ${k.index}">K${k.index}</span>`
+    ).join('');
+    return `<div class="prov-card" onclick="switchView('providers')" style="cursor:pointer">
+        <div class="prov-card-top">
+          <span class="prov-name">${p.label||id}</span>
+          <span class="badge ${p.status}">${p.status === 'on' ? 'Ready' : 'No Key'}</span>
+        </div>
+        <div class="prov-meta" style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${keysHtml}</div>
+      </div>`;
+  }).join('');
 
   // Uptime
   let sec = 0;
@@ -135,15 +138,19 @@ function renderProviders(provStatus) {
   $('viewContainer').appendChild(pane);
 
   const grid = $('fullProvGrid');
-  grid.innerHTML = Object.entries(provStatus||{}).map(([id, p]) =>
-    `<div class="prov-card">
+  grid.innerHTML = Object.entries(provStatus||{}).map(([id, p]) => {
+    const keysHtml = (p.keys||[]).map(k =>
+      `<span class="key-chip ${k.has_value?'on':'off'}" title="${k.masked}">K${k.index}</span>`
+    ).join('');
+    return `<div class="prov-card">
       <div class="prov-card-top">
         <span class="prov-name">${p.label||id}</span>
         <span class="badge ${p.status}">${p.status === 'on' ? 'Ready' : p.status === 'warn' ? 'No Key' : 'Off'}</span>
       </div>
-      <div class="prov-meta">${p.status === 'on' ? '✓ Configured' : '—'}</div>
-    </div>`
-  ).join('');
+      <div class="prov-meta">${p.key_count || 0} key${(p.key_count||0) !== 1 ? 's' : ''}</div>
+      <div class="prov-meta" style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${keysHtml}</div>
+    </div>`;
+  }).join('');
 }
 
 // ── Models Pane ───────────────────────────────────────────────────────────

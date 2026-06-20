@@ -1,4 +1,4 @@
-"""FC-Play admin API — configuration endpoints with full provider support."""
+"""FC-Play admin API — configuration endpoints with key pool support."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from loguru import logger
 from fc_play.config.constants import PROVIDERS
 from fc_play.config.paths import config_file
 from fc_play.config.settings import Settings, get_settings
+from fc_play.providers.router import provider_health
 
 router = APIRouter()
 
@@ -38,10 +39,17 @@ async def get_config():
     provider_status = {}
     for pid, display in PROVIDERS.items():
         has_key = prov.get(pid, False)
+        key_count = settings.provider_key_count(pid)
+        key_summary = settings.provider_key_summary(pid)
         if pid in ("ollama", "lmstudio", "llamacpp"):
-            provider_status[pid] = {"status": "on", "label": display}
+            provider_status[pid] = {"status": "on", "label": display, "keys": [{"index": 1, "masked": "—", "has_value": False}]}
         else:
-            provider_status[pid] = {"status": "on" if has_key else "warn", "label": display}
+            provider_status[pid] = {
+                "status": "on" if has_key else "warn",
+                "label": display,
+                "keys": key_summary,
+                "key_count": key_count,
+            }
 
     model_opts = [
         "custom/claude-opus-4-20250514", "custom/claude-sonnet-4-20250514",
@@ -149,6 +157,12 @@ def f_spec(
 # ---------------------------------------------------------------------------
 # Validate & Apply
 # ---------------------------------------------------------------------------
+
+@router.get("/api/keys")
+async def get_key_health():
+    """Get key pool health for admin UI."""
+    return JSONResponse(content={"providers": provider_health()})
+
 
 @router.post("/api/config/validate")
 async def validate_config(request: Request):

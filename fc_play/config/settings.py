@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -238,12 +239,99 @@ class Settings(BaseSettings):
             "llamacpp": self._is_local_available("llamacpp_base_url"),
         }
 
+    # ─── Multi-key rotation ───────────────────────────────────────────────
+
+    _KEY_SUFFIX_RE = re.compile(r"_\d+$")
+
+    def get_provider_keys(self, provider: str) -> list[str]:
+        """Collect all API keys for a provider, supporting rotation.
+
+        Supports two formats:
+        1. Single key:  `PROVIDER_API_KEY=sk-...`
+        2. Multi-key:   `PROVIDER_API_KEY_1=sk-...`  `PROVIDER_API_KEY_2=sk-...`
+
+        When multi-key format is used, the base key (without _N) is ignored.
+        Keys are returned in numeric suffix order (1, 2, 3...).
+        """
+        base_key = _provider_key_name(provider)
+        primary = getattr(self, base_key, None)
+        if not primary:
+            return []
+
+        # Check if multi-key format is in use — look for PROVIDER_API_KEY_1 etc.
+        suffix_pattern = base_key.upper() + r"_(\d+)"
+        multi_keys: list[tuple[int, str]] = []
+
+        for env_key, env_val in os.environ.items():
+            m = re.match(suffix_pattern, env_key)
+            if m and env_val:
+                multi_keys.append((int(m.group(1)), env_val))
+
+        if multi_keys:
+            multi_keys.sort(key=lambda x: x[0])
+            result = []
+            for _, val in multi_keys:
+                # Mask in config — show only masked form for security
+                result.append(val)
+            if result:
+                return result
+
+        # Fall back to single key
+        return [primary] if primary else []
+
+    def provider_key_count(self, provider: str) -> int:
+        """Return the number of keys configured for a provider."""
+        return len(self.get_provider_keys(provider))
+
+    def provider_key_summary(self, provider: str) -> list[dict]:
+        """Return masked key list for admin UI display."""
+        keys = self.get_provider_keys(provider)
+        return [
+            {"index": i + 1, "masked": _mask_key(k), "has_value": bool(k)}
+            for i, k in enumerate(keys)
+        ]
+
     @staticmethod
     def _is_local_available(url_attr: str) -> bool:
         """Check if a local provider URL is configured (non-default)."""
         return True  # Local providers are always "available" if the config exists
 
 
+# ─── Helpers ────────────────────────────────────────────────────────────────
+
+_KEY_ENV_MAP: dict[str, str] = {}
+
+
+def _init_key_map() -> None:
+    """Build mapping from attribute name → env var name for API keys."""
+    global _KEY_ENV_MAP
+    if _KEY_ENV_MAP:
+        return
+    for field_name in Settings.model_fields:
+        if field_name.endswith("_api_key") and field_name in (
+            "anthropic_api_key", "openai_api_key", "openrouter_api_key",
+            "gemini_api_key", "deepseek_api_key", "mistral_api_key",
+            "codestral_api_key", "groq_api_key", "fireworks_api_key",
+            "together_api_key", "nvidia_nim_api_key", "cerebras_api_key",
+            "kimi_api_key", "wafer_api_key", "opencode_api_key", "zai_api_key",
+        ):
+            env_var = field_name.upper()
+            _KEY_ENV_MAP[field_name] = env_var
+
+
+def _provider_key_name(provider: str) -> str:
+    """Get the Settings attribute name for a provider's primary key field."""
+    return f"{provider}_api_key"
+
+
+def _mask_key(key: str) -> str:
+    """Mask API key for display — show first 8 + last 4 chars."""
+    if len(key) < 16:
+        return key[:6] + "..." if len(key) > 6 else key[:3] + "..."
+    return key[:8] + "..." + key[-4:]
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    _init_key_map()
     return Settings()
