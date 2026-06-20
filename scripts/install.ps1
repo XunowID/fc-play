@@ -99,7 +99,7 @@ if (-not (Test-Path $envPath)) {
 # FC-Play Configuration
 CUSTOM_API_KEY=your-api-key-here
 CUSTOM_API_MODEL=claude-sonnet-4-20250514
-PORT=8083
+PORT=3010
 "@ | Set-Content $envPath -Encoding UTF8
 }
 Write-Host "  ✓ Config at $envPath" -ForegroundColor Green

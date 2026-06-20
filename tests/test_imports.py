@@ -26,7 +26,7 @@ def test_import_cli():
 def test_settings_defaults():
     from fc_play.config.settings import get_settings
     s = get_settings()
-    assert s.port == 8083
+    assert s.port == 3010
     assert s.host == "0.0.0.0"
 
 

@@ -36,7 +36,7 @@ def _banner():
 @cli.command()
 def server(
     host: str = typer.Option("0.0.0.0", "--host", help="Bind address"),
-    port: int = typer.Option(8083, "--port", "-p", help="Port"),
+    port: int = typer.Option(3010, "--port", "-p", help="Port"),
     env: Optional[Path] = typer.Option(None, "--env", "-e", help=".env path"),
     log_level: str = typer.Option("INFO", "--log-level", "-l"),
 ):
@@ -67,7 +67,7 @@ def tui(
 
 @cli.command()
 def admin(
-    port: int = typer.Option(8083, "--port", "-p", help="Server port"),
+    port: int = typer.Option(3010, "--port", "-p", help="Server port"),
     open: bool = typer.Option(False, "--open", "-o", help="Open browser"),
 ):
     """Start server with admin UI."""

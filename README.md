@@ -102,7 +102,7 @@ MODEL=custom/claude-sonnet-4-20250514
 MODEL_OPUS=custom/claude-opus-4-20250514
 
 # Server
-PORT=8083
+PORT=3010
 HOST=0.0.0.0
 ```
 
