@@ -199,7 +199,7 @@ uv run pytest -v
 
 ## 📄 License
 
-MIT — do what you want, just don't blame us.
+[MIT](LICENSE) — do what you want, just don't blame us.
 
 ---
 
