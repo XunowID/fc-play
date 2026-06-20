@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FC-Play Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/assets/admin.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>FC-Play</h1>
+          <p>Server Control</p>
+        </div>
+      </div>
+
+      <nav id="sectionNav" class="nav-links"></nav>
+
+      <div class="sidebar-footer">
+        <div class="server-status" id="serverStatus">
+          <span class="status-dot"></span>
+          <span>Running</span>
+        </div>
+        <div class="version-badge">v1.0.0</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="topbar">
+        <h2 id="pageTitle">Dashboard</h2>
+        <div class="topbar-actions">
+          <button class="ghost-button" onclick="document.getElementById('view-providers').scrollIntoView({behavior:'smooth'})">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            Quick Status
+          </button>
+        </div>
+      </header>
+
+      <div id="adminViews" class="views-container">
+        <!-- Providers View -->
+        <div id="view-providers" class="admin-view">
+          <section class="view-section">
+            <div class="section-header">
+              <h3>Providers</h3>
+              <span class="section-badge" id="providerCount">0 connected</span>
+            </div>
+            <div id="providerGrid" class="provider-grid"></div>
+          </section>
+
+          <section class="view-section">
+            <div class="section-header">
+              <h3>Configuration</h3>
+              <span class="section-badge">Settings</span>
+            </div>
+            <div id="configSections"></div>
+          </section>
+        </div>
+
+        <!-- Status View -->
+        <div id="view-status" class="admin-view" hidden>
+          <section class="view-section">
+            <div class="section-header">
+              <h3>Server Status</h3>
+              <span class="section-badge">Live</span>
+            </div>
+            <div class="status-grid">
+              <div class="status-card">
+                <div class="status-card-icon status-ok">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                </div>
+                <div class="status-card-body">
+                  <span class="status-card-value">Connected</span>
+                  <span class="status-card-label">Server</span>
+                </div>
+              </div>
+              <div class="status-card">
+                <div class="status-card-icon status-ok">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <div class="status-card-body">
+                  <span class="status-card-value" id="activeModels">0</span>
+                  <span class="status-card-label">Active Models</span>
+                </div>
+              </div>
+              <div class="status-card">
+                <div class="status-card-icon status-warn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="status-card-body">
+                  <span class="status-card-value" id="activeConnections">0</span>
+                  <span class="status-card-label">Connections</span>
+                </div>
+              </div>
+              <div class="status-card">
+                <div class="status-card-icon status-neutral">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+                </div>
+                <div class="status-card-body">
+                  <span class="status-card-value" id="uptimeDisplay">0m</span>
+                  <span class="status-card-label">Uptime</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view-section">
+            <div class="section-header">
+              <h3>Recent Activity</h3>
+              <span class="section-badge">Logs</span>
+            </div>
+            <div id="activityLog" class="activity-log">
+              <div class="log-empty">No recent activity. Start using the proxy to see logs here.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- Action Bar -->
+    <footer class="action-bar">
+      <div class="action-info">
+        <span class="dirty-state" id="dirtyState">
+          <span class="dirty-dot"></span>
+          No changes
+        </span>
+        <span class="config-path" id="configPath"></span>
+      </div>
+      <div class="action-message" id="actionMessage"></div>
+      <div class="action-buttons">
+        <button class="secondary-button" onclick="validate()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Validate
+        </button>
+        <button class="primary-button" id="applyBtn" disabled onclick="apply()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Apply Changes
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast -->
+  <div id="toastContainer" class="toast-container"></div>
+
+<script src="/admin/assets/admin.js"></script>
+</body>
+</html>
