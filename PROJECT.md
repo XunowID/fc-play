@@ -8,10 +8,10 @@ Building **FC-Play** — multi-provider model gateway. 20+ providers. One endpoi
 2. **All Providers** — 20+ including Anthropic, OpenAI, local, community
 3. **Zero Friction** — One-command install, one .env file
 4. **No AI branding** in UI labels — use "Model Service", "Gateway", "Provider"
-5. **Distinct from free-claude-code** — Different UI (top nav, warm palette, pills), different codebase
+5. **Distinct UI** — Top nav, warm palette, pills, no sidebar
 
-## Key Differences from free-claude-code
-- **Prefix**: `fc-play` everywhere (not `fcc-`)
+## Key Differences
+- **Prefix**: `fc-play` everywhere
 - **Admin UI**: Top navigation, amber/orange accent, warmer dark theme, pill buttons, no sidebar
 - **Code**: Clean Python 3.12, no type ignores, comprehensive provider support
 - **Entry points**: `fc-play`, `fc-play-server`, `fc-play-admin`, `fc-play-tui`

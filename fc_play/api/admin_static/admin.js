@@ -1,6 +1,6 @@
 /* ===========================================================================
    FC-Play · Gateway Console — Controller
-   Distinct from free-claude-code: top tabs, warm palette, compact layout
+   Top tabs, warm palette, compact layout
    =========================================================================== */
 
 // ── State ─────────────────────────────────────────────────────────────────
